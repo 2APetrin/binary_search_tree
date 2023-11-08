@@ -1,6 +1,6 @@
 #pragma once
 
-#include "avl_tree.hpp"
+#include "avl.hpp"
 #include "custom_assert.hpp"
 #include <cstring>
 #include <iostream>
@@ -41,14 +41,14 @@ void close_graphviz(void)
 }
 
 
-template <typename key_t>
-int subtree_dump(node_t<key_t>* node)
+template <typename key_t, typename comp>
+int subtree_dump(detail::node_t<key_t, comp>* node)
 {
     std::cout << "graphviz init\n";
     open_grapviz();
 
-    node_print<key_t>(node);
-    node_link<key_t>(node);
+    node_print<key_t, comp>(node);
+    node_link<key_t, comp>(node);
 
     close_graphviz();
 
@@ -62,27 +62,27 @@ int subtree_dump(node_t<key_t>* node)
 }
 
 
-template <typename key_t>
-void node_link(node_t<key_t>* node)
+template <typename key_t, typename comp>
+void node_link(detail::node_t<key_t, comp>* node)
 {
     if (node == nullptr) return;
 
     if (node->get_left() != nullptr)
     {
-        link_nodes<key_t>(node, node->get_left());
-        node_link<key_t>(node->get_left());
+        link_nodes<key_t, comp>(node, node->get_left());
+        node_link<key_t, comp>(node->get_left());
     }
 
     if (node->get_right() != nullptr)
     {
-        link_nodes<key_t>(node, node->get_right());
-        node_link<key_t>(node->get_right());
+        link_nodes<key_t, comp>(node, node->get_right());
+        node_link<key_t, comp>(node->get_right());
     }
 }
 
 
-template <typename key_t>
-void link_nodes(node_t<key_t>* node1, node_t<key_t>* node2)
+template <typename key_t, typename comp>
+void link_nodes(detail::node_t<key_t, comp>* node1, detail::node_t<key_t, comp>* node2)
 {
     ASSERT(node1);
     ASSERT(node2);
@@ -93,23 +93,23 @@ void link_nodes(node_t<key_t>* node1, node_t<key_t>* node2)
 }
 
 
-template <typename key_t>
-void node_print(node_t<key_t>* node)
+template <typename key_t, typename comp>
+void node_print(detail::node_t<key_t, comp>* node)
 {
     if (node == nullptr) return;
 
-    graphviz_add_node(node);
+    graphviz_add_node<key_t, comp>(node);
 
-    node_print<key_t>(node->get_left());
+    node_print<key_t, comp>(node->get_left());
 
-    node_print<key_t>(node->get_right());
+    node_print<key_t, comp>(node->get_right());
 }
 
 
-template <typename key_t>
-void graphviz_add_node(node_t<key_t>* node)
+template <typename key_t, typename comp>
+void graphviz_add_node(detail::node_t<key_t, comp>* node)
 {
-    fprintf(graphviz_file, "    node_%p[shape = Mrecord, label = \"{{%p} | {%d}}\", style = \"filled\", fillcolor = \"#EFDECD\"];\n", node, node, node->get_key());
+    fprintf(graphviz_file, "    node_%p[shape = Mrecord, label = \"{{%p} | {%d} | {height = %d} | {size = %d}}\", style = \"filled\", fillcolor = \"#EFDECD\"];\n", node, node, node->get_key(), node->get_height(), node->get_size());
 }
 
 }

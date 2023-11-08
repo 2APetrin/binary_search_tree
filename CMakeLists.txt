@@ -13,6 +13,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-add_subdirectory(./source)
+add_subdirectory(./src)
+add_subdirectory(./test)
 
-target_include_directories(avl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include/tree ${CMAKE_CURRENT_SOURCE_DIR}/include/graphviz)
+target_include_directories(avl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/tree ${CMAKE_CURRENT_SOURCE_DIR}/inc/graphviz)
+
