@@ -10,11 +10,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -O0 -D DEBUG -fsanitize=address,alig
 set(CMAKE_CXX_FLAGS_RELEASE "-Wall -O2 -DNDEBUG")
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 add_subdirectory(./src)
 add_subdirectory(./test)
 
-target_include_directories(avl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/tree ${CMAKE_CURRENT_SOURCE_DIR}/inc/graphviz)
+target_include_directories(avl     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/tree ${CMAKE_CURRENT_SOURCE_DIR}/inc/graphviz)
+target_include_directories(compare PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/tree ${CMAKE_CURRENT_SOURCE_DIR}/inc/graphviz)
+
 
