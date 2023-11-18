@@ -62,7 +62,7 @@ int main() {
             int upbnd = *jt;
             auto snd = test_set.upper_bound(upbnd); ++jt;
 
-            if (upbnd < lwbnd) ans_set.push_back(0);
+            if (upbnd <= lwbnd) ans_set.push_back(0);
             else ans_set.push_back(std::distance(fst, snd));
         }
     }

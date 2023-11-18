@@ -466,6 +466,8 @@ private:
 
 template <typename key_t = int, typename comp = std::less<int>>
 int get_tree_distance(avl_tree_t<key_t, comp> &tr, key_t lower, key_t upper) {
+    if (upper <= lower) return 0;
+
     auto fst = tr.lower_bound(lower),
          snd = tr.upper_bound(upper);
 
