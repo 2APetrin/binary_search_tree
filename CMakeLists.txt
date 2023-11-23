@@ -18,5 +18,3 @@ add_subdirectory(./test)
 
 target_include_directories(avl     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/tree ${CMAKE_CURRENT_SOURCE_DIR}/inc/graphviz)
 target_include_directories(compare PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/inc/tree ${CMAKE_CURRENT_SOURCE_DIR}/inc/graphviz)
-
-

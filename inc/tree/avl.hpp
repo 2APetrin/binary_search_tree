@@ -32,7 +32,56 @@ class avl_tree_t final {
     const iterator nil_ = nullptr;
 
     iterator root_ = nil_;
-    std::list<node_t> nodes_;
+    std::list<node_t> nodes_; // if exception it flows up and everything is OK
+
+public:
+//---------------------------------------BIG_FIVE---------------------------------------//
+
+    avl_tree_t()  = default; // not noexcept cuz of list but it's OK
+
+    ~avl_tree_t() = default; // noexcept
+
+    avl_tree_t(const avl_tree_t &tree2) : avl_tree_t() {
+        avl_tree_t tmp_tree;
+        tmp_tree.tree_copy(tree2);
+
+    //--------------------Kalb line--------------------//
+
+        nodes_ = std::move(tmp_tree.nodes_); // move assignment instead of swap
+        root_ = tmp_tree.root_;
+    }
+
+
+    avl_tree_t(avl_tree_t &&tree2) noexcept : avl_tree_t() {
+        nodes_ = std::move(tree2.nodes_);
+        root_ = tree2.root_;
+    }
+
+
+    avl_tree_t& operator= (const avl_tree_t &tree2) {
+        if (this == &tree2) return *this;
+
+        avl_tree_t tmp_tree;
+        tmp_tree.tree_copy(tree2);
+
+    //--------------------Kalb line--------------------//
+
+        nodes_ = std::move(tmp_tree.nodes_); // move assignment instead of swap
+        root_ = tmp_tree.root_;
+
+        return *this;
+    }
+
+
+    avl_tree_t& operator= (avl_tree_t &&tree2) noexcept {
+        if (this == &tree2) return *this;
+
+        nodes_ = std::move(tree2.nodes_);
+        root_ = tree2.root_;
+
+        return *this;
+    }
+//--------------------------------------------------------------------------------------//
 
 private:
     void balance_update(iterator node) {
@@ -71,8 +120,6 @@ private:
 
 
     iterator rotate_right(iterator node) {
-        //if (node == nil_) return nil_; test without error handler if
-
         iterator new_polus = node->left_;
         iterator parent = node->parent_;
         iterator save = node;
@@ -97,8 +144,6 @@ private:
 
 
     iterator rotate_left(iterator node) {
-        //if (node == nil_) return nullptr;
-
         iterator new_polus = node->right_;
         iterator parent = node->parent_;
         iterator save = node;
@@ -123,8 +168,6 @@ private:
 
 
     void node_update(iterator node) {
-        //if (node == nil_) return;
-
         int hl  = 0, hr  = 0;
         int szl = 0, szr = 0;
 
@@ -167,33 +210,8 @@ private:
         iterator src = tree2.root_;
 
         while (true) {
-            if ((dst->left_ == nil_) && (src->left_ != nil_)) {
-                iterator sleft = src->left_;
-
-                nodes_.push_back(node_t{sleft->key_, dst, nullptr, nullptr});
-                dst->left_ = &nodes_.back();
-                iterator dleft = dst->left_;
-
-                dleft->height_ = sleft->height_;
-                dleft->subsz_  = sleft->subsz_;
-
-                dst = dleft;
-                src = sleft;
-            }
-
-            else if ((dst->right_ == nil_) && (src->right_ != nil_)) {
-                iterator sright = src->right_;
-
-                nodes_.push_back(node_t{sright->key_, dst, nullptr, nullptr});
-                dst->right_ = &nodes_.back();
-                iterator dright = dst->right_;
-
-                dright->height_ = sright->height_;
-                dright->subsz_  = sright->subsz_;
-
-                dst = dright;
-                src = sright;
-            }
+            if      ((dst->left_  == nil_) && (src->left_  != nil_)) left_node_copy (src, dst);
+            else if ((dst->right_ == nil_) && (src->right_ != nil_)) right_node_copy(src, dst);
 
             else if (dst != root_) {
                 dst = dst->parent_;
@@ -205,13 +223,42 @@ private:
     }
 
 
+    void left_node_copy(iterator &src, iterator &dst) {
+        iterator sleft = src->left_;
+
+        nodes_.push_back(node_t{sleft->key_, dst, nullptr, nullptr});
+        dst->left_ = &nodes_.back();
+        iterator dleft = dst->left_;
+
+        dleft->height_ = sleft->height_;
+        dleft->subsz_  = sleft->subsz_;
+
+        dst = dleft;
+        src = sleft;
+    }
+
+
+    void right_node_copy(iterator &src, iterator &dst) {
+        iterator sright = src->right_;
+
+        nodes_.push_back(node_t{sright->key_, dst, nullptr, nullptr});
+        dst->right_ = &nodes_.back();
+        iterator dright = dst->right_;
+
+        dright->height_ = sright->height_;
+        dright->subsz_  = sright->subsz_;
+
+        dst = dright;
+        src = sright;
+    }
+
 public:
     void insert(key_t key) {
         if (root_ == nil_) {
             nodes_.emplace_back(node_t{key});
             root_ = &nodes_.back();
     #ifdef DUMP_MODE
-            subtree_dump(root_);
+            dump(root_);
     #endif
             return;
         }
@@ -228,7 +275,7 @@ public:
                 curr->right_ = &nodes_.back();
                 balance_update(curr);
     #ifdef DUMP_MODE
-                subtree_dump(root_);
+                dump(root_);
     #endif
             }
 
@@ -242,7 +289,7 @@ public:
                 curr->left_ = &nodes_.back();
                 balance_update(curr);
     #ifdef DUMP_MODE
-                subtree_dump(root_);
+                dump(root_);
     #endif
             } return;
         }
@@ -347,44 +394,13 @@ public:
         return root_->subsz_ + 1 - not_fit_cnt;
     }
 
-//---------------------------------------BIG_FIVE---------------------------------------//
-
-    avl_tree_t()  = default;
-
-    ~avl_tree_t() = default;
-
-    avl_tree_t(const avl_tree_t &tree2) : avl_tree_t() { tree_copy(tree2); }
-
-    avl_tree_t(avl_tree_t &&tree2) noexcept : avl_tree_t() {
-        nodes_ = std::move(tree2.nodes_);
-        root_ = tree2.root_;
-    }
-
-
-    avl_tree_t& operator= (const avl_tree_t &tree2) {
-        if (this == &tree2) return *this;
-
-        nodes_.clear();
-        tree_copy(tree2);
-        return *this;
-    }
-
-
-    avl_tree_t& operator= (avl_tree_t &&tree2) noexcept {
-        if (this == &tree2) return *this;
-
-        nodes_ = std::move(tree2.nodes_);
-        root_ = tree2.root_;
-
-        return *this;
-    }
-
 //---------------------------------------GRAPHVIZ---------------------------------------//
 
-private:
-    void subtree_dump(iterator node) const {
+    void dump() const {
         std::ofstream out;
         open_grapviz(out);
+
+        iterator node = root_;
 
         node_print(node, out);
         node_link(node, out);
@@ -399,7 +415,7 @@ private:
         graphviz_png_count++;
     }
 
-
+private:
     int open_grapviz(std::ofstream &out) const {
         out.open("../logs/log_graphviz.dot");
         if (!out.is_open()) {

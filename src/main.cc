@@ -9,7 +9,7 @@
 
 namespace main_details {
 
-bool is_num(std::string str) {
+bool is_int_num(std::string str) {
     for (auto it = str.begin(), ite = str.end(); it != ite; ++it) {
         if ((*it != '-') && (!std::isdigit(*it))) return false;
     }
@@ -36,7 +36,7 @@ int main() {
     while ((std::cin >> cmd)) {
         if      (!cmd.compare("k")) { commands.push_back(KCMD); }
         else if (!cmd.compare("q")) { commands.push_back(QCMD); }
-        else if (is_num(cmd))       { numbers. push_back(std::stoi(cmd)); }
+        else if (is_int_num(cmd))       { numbers. push_back(std::stoi(cmd)); }
         else {
             std::cerr << "ERROR: bad comand or number\n";
             std::cout << cmd << std::endl;
@@ -73,6 +73,7 @@ int main() {
 
     AVL::avl_tree_t tree;
     std::vector<int> ans_tree;
+
     auto jtt = numbers.begin();
 
 #ifdef COMPARE
