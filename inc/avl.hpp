@@ -1,114 +1,202 @@
 #pragma once
 
-#include "custom_assert.hpp"
 #include <functional>
+#include <iostream>
 #include <fstream>
 #include <cstring>
-#include <list>
-
-//#define DUMP_MODE
+#include <vector>
+#include <memory>
 
 namespace AVL {
 
-int graphviz_png_count;
+static int graphviz_png_count;
 
-template <typename key_t = int, typename comp = std::less<int>>
-class avl_tree_t final {
+const int right_rotate_factor = 2;
+const int left_rotate_factor = -2;
+const int zero_rotate_factor =  0;
 
+namespace detail {
+
+// Rule of zero implementation
+template <typename key_t, typename comp>
+class avl_mem_manager {
+
+protected:
     struct node_t {
         using iterator = node_t*;
 
-        key_t key_;
+        key_t    key_;
         iterator parent_, left_, right_;
 
         int height_ = 1;
         int subsz_  = 0;
 
         node_t(key_t key, iterator parent = nullptr, iterator left = nullptr, iterator right = nullptr) :
-        key_(key), parent_(parent), left_(left), right_(right) {}
+            key_(key),
+            parent_(parent),
+            left_(left),
+            right_(right) {}
     };
 
-    using iterator = node_t*;
-    const iterator nil_ = nullptr;
+using iterator = node_t*;
+const iterator nil_ = nullptr;
 
+protected:
     iterator root_ = nil_;
-    std::list<node_t> nodes_; // if exception it flows up and everything is OK
+    std::vector<std::unique_ptr<node_t>> nodes_; // if exception it flows up and everything is OK
 
-public:
+    avl_mem_manager() = default;
+
 //---------------------------------------BIG_FIVE---------------------------------------//
+    ~avl_mem_manager() = default; // noexcept
 
-    avl_tree_t()  = default; // not noexcept cuz of list but it's OK
-
-    ~avl_tree_t() = default; // noexcept
-
-    avl_tree_t(const avl_tree_t &tree2) : avl_tree_t() {
-        avl_tree_t tmp_tree;
-        tmp_tree.tree_copy(tree2);
+    avl_mem_manager(const avl_mem_manager &tree2) : avl_mem_manager() {
+        avl_mem_manager tmp_mem;
+        tmp_mem.avl_copy(tree2);
 
     //--------------------Kalb line--------------------//
 
-        nodes_ = std::move(tmp_tree.nodes_); // move assignment instead of swap
-        root_ = tmp_tree.root_;
+        nodes_ = std::move(tmp_mem.nodes_);
+        root_  = tmp_mem.root_;
     }
 
 
-    avl_tree_t(avl_tree_t &&tree2) noexcept : avl_tree_t() {
+    avl_mem_manager(avl_mem_manager &&tree2) noexcept : avl_mem_manager() {
         nodes_ = std::move(tree2.nodes_);
-        root_ = tree2.root_;
+        root_  = tree2.root_;
     }
 
 
-    avl_tree_t& operator= (const avl_tree_t &tree2) {
+    avl_mem_manager& operator= (const avl_mem_manager &tree2) {
         if (this == &tree2) return *this;
 
-        avl_tree_t tmp_tree;
-        tmp_tree.tree_copy(tree2);
+        avl_mem_manager tmp_mem;
+        tmp_mem.avl_copy(tree2);
 
     //--------------------Kalb line--------------------//
 
-        nodes_ = std::move(tmp_tree.nodes_); // move assignment instead of swap
-        root_ = tmp_tree.root_;
+        nodes_ = std::move(tmp_mem.nodes_);
+        root_  = tmp_mem.root_;
 
         return *this;
     }
 
 
-    avl_tree_t& operator= (avl_tree_t &&tree2) noexcept {
+    avl_mem_manager& operator= (avl_mem_manager &&tree2) noexcept {
         if (this == &tree2) return *this;
 
         nodes_ = std::move(tree2.nodes_);
-        root_ = tree2.root_;
+        root_  = tree2.root_;
 
         return *this;
     }
 //--------------------------------------------------------------------------------------//
 
 private:
+    void avl_copy(const avl_mem_manager &tree2) {
+        if (tree2.root_ == nil_) return;
+
+        root_ = add_node(tree2.root_->key_);
+
+        iterator dst = root_;
+        iterator src = tree2.root_;
+
+        while (true) {
+            if      ((dst->left_  == nil_) && (src->left_  != nil_)) left_node_copy (src, dst);
+            else if ((dst->right_ == nil_) && (src->right_ != nil_)) right_node_copy(src, dst);
+
+            else if (dst != root_) {
+                dst = dst->parent_;
+                src = src->parent_;
+            }
+
+            else break;
+        }
+    }
+
+
+    void left_node_copy(iterator &src, iterator &dst) {
+        iterator sleft = src->left_;
+
+        dst->left_ = add_node(sleft->key_, dst, nullptr, nullptr);
+
+        iterator dleft = dst->left_;
+
+        dleft->height_ = sleft->height_;
+        dleft->subsz_  = sleft->subsz_;
+
+        dst = dleft;
+        src = sleft;
+    }
+
+
+    void right_node_copy(iterator &src, iterator &dst) {
+        iterator sright = src->right_;
+
+        dst->right_ = add_node(sright->key_, dst, nullptr, nullptr);
+
+        iterator dright = dst->right_;
+
+        dright->height_ = sright->height_;
+        dright->subsz_  = sright->subsz_;
+
+        dst = dright;
+        src = sright;
+    }
+
+
+protected:
+    iterator add_node(key_t key, iterator parent = nullptr, iterator left = nullptr, iterator right = nullptr) {
+        auto tmp = new node_t{key, parent, left, right};
+        nodes_.push_back(std::move(std::unique_ptr<node_t>(tmp)));
+        return nodes_.back().get();
+    }
+}; // <-- class avl_mem_manager
+
+} // <-- namespace detail
+
+
+//---------------------------------------AVL TREE---------------------------------------//
+template <typename key_t = int, typename comp = std::less<int>>
+class avl_tree_t final : private detail::avl_mem_manager<key_t, comp> {
+    using detail::avl_mem_manager<key_t, comp>::root_;
+    using detail::avl_mem_manager<key_t, comp>::nodes_;
+    using detail::avl_mem_manager<key_t, comp>::nil_;
+
+    using typename detail::avl_mem_manager<key_t, comp>::iterator;
+    using detail::avl_mem_manager<key_t, comp>::add_node;
+
+public:
+    avl_tree_t() = default; // not noexcept cuz of mem_manager but it supposed to be so
+
+private:
     void balance_update(iterator node) {
         if (node == nil_) return;
 
-        iterator curr = node;
+        iterator curr   = node;
+        iterator parent = nil_;
 
         while (curr != nil_) {
-            iterator parent = curr->parent_;
-
+            parent = curr->parent_;
             node_update(curr);
 
             int bfact = bfactor(curr);
 
-            if (bfact == 2) {
+            if (bfact == right_rotate_factor) {
                 iterator right = curr->right_;
 
-                if (bfactor(right) < 0) rotate_right(right);
+                if (bfactor(right) < zero_rotate_factor)
+                    rotate_right(right);
 
                 curr = rotate_left(curr);
                 if (parent == nil_) root_ = curr;
             }
 
-            else if (bfact == -2) {
+            else if (bfact == left_rotate_factor) {
                 iterator left = curr->left_;
 
-                if (bfactor(left) > 0) rotate_left(left);
+                if (bfactor(left) > zero_rotate_factor)
+                    rotate_left(left);
 
                 curr = rotate_right(curr);
                 if (parent == nil_) root_ = curr;
@@ -131,7 +219,7 @@ private:
         node->parent_ = new_polus;
         new_polus->parent_ = parent;
 
-        if (parent) {
+        if (parent != nil_) {
             if (save == parent->right_) parent->right_ = new_polus;
             else parent->left_ = new_polus;
         }
@@ -149,13 +237,13 @@ private:
         iterator save = node;
 
         node->right_ = new_polus->left_;
-        if (node->right_) node->right_->parent_ = node;
+        if (node->right_ != nil_) node->right_->parent_ = node;
 
         new_polus->left_ = node;
         node->parent_ = new_polus;
         new_polus->parent_ = parent;
 
-        if (parent) {
+        if (parent != nil_) {
             if (save == parent->right_) parent->right_ = new_polus;
             else parent->left_ = new_polus;
         }
@@ -174,12 +262,12 @@ private:
         iterator left  = node->left_;
         iterator right = node->right_;
 
-        if (left) {
+        if (left != nil_) {
             hl  = left->height_;
             szl = left->subsz_ + 1;
         }
 
-        if (right) {
+        if (right != nil_) {
             hr  = right->height_;
             szr = right->subsz_ + 1;
         }
@@ -193,105 +281,46 @@ private:
         int hl = 0;
         int hr = 0;
 
-        if (node->left_)  hl = node->left_->height_;
-        if (node->right_) hr = node->right_->height_;
+        if (node->left_  != nil_) hl = node->left_ ->height_;
+        if (node->right_ != nil_) hr = node->right_->height_;
 
         return hr - hl;
     }
 
 
-    void tree_copy(const avl_tree_t &tree2) {
-        if (tree2.root_ == nil_) return;
-
-        nodes_.push_back(node_t{tree2.root_->key_});
-        root_ = &nodes_.back();
-
-        iterator dst = root_;
-        iterator src = tree2.root_;
-
-        while (true) {
-            if      ((dst->left_  == nil_) && (src->left_  != nil_)) left_node_copy (src, dst);
-            else if ((dst->right_ == nil_) && (src->right_ != nil_)) right_node_copy(src, dst);
-
-            else if (dst != root_) {
-                dst = dst->parent_;
-                src = src->parent_;
-            }
-
-            else break;
-        }
-    }
-
-
-    void left_node_copy(iterator &src, iterator &dst) {
-        iterator sleft = src->left_;
-
-        nodes_.push_back(node_t{sleft->key_, dst, nullptr, nullptr});
-        dst->left_ = &nodes_.back();
-        iterator dleft = dst->left_;
-
-        dleft->height_ = sleft->height_;
-        dleft->subsz_  = sleft->subsz_;
-
-        dst = dleft;
-        src = sleft;
-    }
-
-
-    void right_node_copy(iterator &src, iterator &dst) {
-        iterator sright = src->right_;
-
-        nodes_.push_back(node_t{sright->key_, dst, nullptr, nullptr});
-        dst->right_ = &nodes_.back();
-        iterator dright = dst->right_;
-
-        dright->height_ = sright->height_;
-        dright->subsz_  = sright->subsz_;
-
-        dst = dright;
-        src = sright;
-    }
-
 public:
     void insert(key_t key) {
         if (root_ == nil_) {
-            nodes_.emplace_back(node_t{key});
-            root_ = &nodes_.back();
-    #ifdef DUMP_MODE
-            dump(root_);
-    #endif
+            root_ = add_node(key);
+            dump();
             return;
         }
 
         iterator curr = root_;
         while (curr) {
             if (comp()(curr->key_, key)) {
-                if (curr->right_) {
+                if (curr->right_ != nil_) {
                     curr = curr->right_;
                     continue;
                 }
 
-                nodes_.emplace_back(node_t{key, curr, nullptr, nullptr});
-                curr->right_ = &nodes_.back();
+                curr->right_ = add_node(key, curr, nullptr, nullptr);
                 balance_update(curr);
-    #ifdef DUMP_MODE
-                dump(root_);
-    #endif
+                dump();
             }
 
             else if (comp()(key, curr->key_)) {
-                if (curr->left_) {
+                if (curr->left_ != nil_) {
                     curr = curr->left_;
                     continue;
                 }
 
-                nodes_.emplace_back(node_t{key, curr, nullptr, nullptr});
-                curr->left_ = &nodes_.back();
+                curr->left_ = add_node(key, curr, nullptr, nullptr);
                 balance_update(curr);
-    #ifdef DUMP_MODE
-                dump(root_);
-    #endif
-            } return;
+                dump();
+            }
+
+            return;
         }
     }
 
@@ -395,8 +424,8 @@ public:
     }
 
 //---------------------------------------GRAPHVIZ---------------------------------------//
-
     void dump() const {
+    #ifdef DUMP_MODE
         std::ofstream out;
         open_grapviz(out);
 
@@ -413,6 +442,7 @@ public:
 
         std::cout << graphviz_png_count << " dump made\n";
         graphviz_png_count++;
+    #endif
     }
 
 private:
@@ -429,8 +459,6 @@ private:
 
 
     void close_graphviz(std::ofstream &out) const {
-        ASSERT(out.is_open());
-
         out << "}";
         out.close();
     }
@@ -452,10 +480,6 @@ private:
 
 
     void link_nodes(iterator node1, iterator node2, std::ofstream &out) const {
-        ASSERT(node1 != nil_);
-        ASSERT(node2 != nil_);
-        ASSERT(out.is_open());
-
         if (node2 == node1->right_)  out << "    node_" << node1 << "->node_" << node2 << " [color = \"#E32636\"];\n";
         if (node2 == node1->left_)   out << "    node_" << node1 << "->node_" << node2 << " [color = \"#1164B4\"];\n";
         if (node2 == node1->parent_) out << "    node_" << node1 << "->node_" << node2 << " [color = \"#140F0B\", style = dotted];\n";
@@ -479,7 +503,6 @@ private:
     }
 };
 
-
 template <typename key_t = int, typename comp = std::less<int>>
 int get_tree_distance(avl_tree_t<key_t, comp> &tr, key_t lower, key_t upper) {
     if (upper <= lower) return 0;
@@ -490,4 +513,4 @@ int get_tree_distance(avl_tree_t<key_t, comp> &tr, key_t lower, key_t upper) {
     return tr.distance(fst, snd);
 }
 
-}
+} // <-- namespace AVL

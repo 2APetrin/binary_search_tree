@@ -1,11 +1,7 @@
 #include "avl.hpp"
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <string>
+#include <vector>
 #include <chrono>
 #include <set>
-
 
 namespace main_details {
 
@@ -17,12 +13,12 @@ bool is_int_num(std::string str) {
 }
 
 
-enum COMANDS {
+enum class COMANDS {
     KCMD = 1,
     QCMD = 0
 };
 
-}
+} // namespace main_details
 
 
 int main() {
@@ -34,17 +30,23 @@ int main() {
     std::string cmd;
 
     while ((std::cin >> cmd)) {
-        if      (!cmd.compare("k")) { commands.push_back(KCMD); }
-        else if (!cmd.compare("q")) { commands.push_back(QCMD); }
-        else if (is_int_num(cmd))       { numbers. push_back(std::stoi(cmd)); }
+        if      (!cmd.compare("k")) { commands.push_back(static_cast<int>(COMANDS::KCMD)); }
+        else if (!cmd.compare("q")) { commands.push_back(static_cast<int>(COMANDS::QCMD)); }
+        else if (is_int_num(cmd))   { numbers. push_back(std::stoi(cmd)); }
         else {
             std::cerr << "ERROR: bad comand or number\n";
             std::cout << cmd << std::endl;
-            ASSERT(false);
         }
     }
 
 #ifdef COMPARE
+    std::fstream out;
+    out.open("test/tmp.txt", std::ios::app);
+    if (!out.is_open()) {
+        std::cerr << "Cannot open tmp file. Programm shutdown\n";
+        return 1;
+    }
+
     std::set<int> test_set;
     std::vector<int> ans_set;
     auto jt = numbers.begin();
@@ -69,6 +71,7 @@ int main() {
 
     auto end_set = std::chrono::high_resolution_clock::now();
     std::cout << "std::set time = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end_set - start_set).count() << std::endl;
+    out << std::chrono::duration_cast<std::chrono::nanoseconds>(end_set - start_set).count() << std::endl;
 #endif
 
     AVL::avl_tree_t tree;
@@ -95,6 +98,7 @@ int main() {
 #ifdef COMPARE
     auto end_tree = std::chrono::high_resolution_clock::now();
     std::cout << "avl_tree time = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end_tree - start_tree).count() << std::endl;
+    out << std::chrono::duration_cast<std::chrono::nanoseconds>(end_tree - start_tree).count() << std::endl;
 #endif
 
 #ifndef COMPARE
