@@ -21,8 +21,9 @@ for i in range(int(len(data_arr)/2)):
 
 for i in range(int(len(data_arr)/2)):
     ax[i].bar(["set","avl"], plot_arr[i])
-    ax[i].set(xlabel=i+1)
-    ax[i].set_yticks([1])
+    ax[i].set(xlabel=i)
+    ax[i].set_title(str(round(plot_arr[i][0]/plot_arr[i][1] * 100 - 100, 1)) + "%")
+    ax[i].set_yticks([1, plot_arr[i][1]])
 
-
+plt.suptitle("set vs avl speed")
 plt.show()

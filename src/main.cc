@@ -1,17 +1,16 @@
 #include "avl.hpp"
+#include <algorithm>
 #include <vector>
 #include <chrono>
 #include <set>
 
 namespace main_details {
 
-bool is_int_num(std::string str) {
-    for (auto it = str.begin(), ite = str.end(); it != ite; ++it) {
-        if ((*it != '-') && (!std::isdigit(*it))) return false;
-    }
-    return true;
+bool is_int_num(std::string& str) {
+    auto it = str.begin(), ite = str.end();
+    if (*it == '-') ++it;
+    return std::all_of(it, ite, isdigit);
 }
-
 
 enum class COMANDS {
     KCMD = 1,
@@ -35,7 +34,7 @@ int main() {
         else if (is_int_num(cmd))   { numbers. push_back(std::stoi(cmd)); }
         else {
             std::cerr << "ERROR: bad comand or number\n";
-            std::cout << cmd << std::endl;
+            std::cout << cmd << '\n';
         }
     }
 
@@ -70,8 +69,9 @@ int main() {
     }
 
     auto end_set = std::chrono::high_resolution_clock::now();
-    std::cout << "std::set time = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end_set - start_set).count() << std::endl;
-    out << std::chrono::duration_cast<std::chrono::nanoseconds>(end_set - start_set).count() << std::endl;
+    auto time_set = std::chrono::duration_cast<std::chrono::nanoseconds>(end_set - start_set).count();
+    std::cout << "std::set time = " << time_set << '\n';
+    out << time_set << '\n';
 #endif
 
     AVL::avl_tree_t tree;
@@ -97,8 +97,11 @@ int main() {
 
 #ifdef COMPARE
     auto end_tree = std::chrono::high_resolution_clock::now();
-    std::cout << "avl_tree time = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end_tree - start_tree).count() << std::endl;
-    out << std::chrono::duration_cast<std::chrono::nanoseconds>(end_tree - start_tree).count() << std::endl;
+    auto time_avl = std::chrono::duration_cast<std::chrono::nanoseconds>(end_tree - start_tree).count();
+    std::cout << "avl_tree time = " << time_avl << '\n';
+    double val = static_cast<double>(time_set) / time_avl * 100 - 100;
+    std::cout << "avl is " << val << '%' << " faster that std::set" << '\n';
+    out << std::chrono::duration_cast<std::chrono::nanoseconds>(end_tree - start_tree).count() << '\n';
 #endif
 
 #ifndef COMPARE
@@ -112,7 +115,7 @@ int main() {
             if ((*it) != (*jt)) {
                 flag = false;
             }
-            //std::cout << (*it) << "-" << (*jt) << std::endl;
+            //std::cout << (*it) << "-" << (*jt) << '\n';
         }
 
         if (flag) std::cout << "worked equally\n";

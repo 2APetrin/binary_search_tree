@@ -57,13 +57,13 @@ protected:
     //--------------------Kalb line--------------------//
 
         nodes_ = std::move(tmp_mem.nodes_);
-        root_  = tmp_mem.root_;
+        std::swap(root_, tmp_mem.root_);
     }
 
 
     avl_mem_manager(avl_mem_manager &&tree2) noexcept : avl_mem_manager() {
         nodes_ = std::move(tree2.nodes_);
-        root_  = tree2.root_;
+        std::swap(root_, tree2.root_);
     }
 
 
@@ -76,7 +76,7 @@ protected:
     //--------------------Kalb line--------------------//
 
         nodes_ = std::move(tmp_mem.nodes_);
-        root_  = tmp_mem.root_;
+        std::swap(root_, tmp_mem.root_);
 
         return *this;
     }
@@ -86,7 +86,7 @@ protected:
         if (this == &tree2) return *this;
 
         nodes_ = std::move(tree2.nodes_);
-        root_  = tree2.root_;
+        std::swap(root_, tree2.root_);
 
         return *this;
     }
@@ -292,7 +292,7 @@ public:
     void insert(key_t key) {
         if (root_ == nil_) {
             root_ = add_node(key);
-            dump();
+            //dump();
             return;
         }
 
@@ -306,7 +306,7 @@ public:
 
                 curr->right_ = add_node(key, curr, nullptr, nullptr);
                 balance_update(curr);
-                dump();
+                //dump();
             }
 
             else if (comp()(key, curr->key_)) {
@@ -317,7 +317,7 @@ public:
 
                 curr->left_ = add_node(key, curr, nullptr, nullptr);
                 balance_update(curr);
-                dump();
+                //dump();
             }
 
             return;
