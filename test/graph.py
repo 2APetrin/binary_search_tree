@@ -1,10 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 data_arr = []
 plot_arr = []
 
-with open("test/tmp.txt", "r") as data:
+with open(os.path.dirname(os.path.abspath(__file__)) + "/tmp.txt", "r") as data:
     for line in data:
         data_arr.append(int(line))
 

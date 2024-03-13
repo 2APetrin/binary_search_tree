@@ -1,5 +1,6 @@
 #include "avl.hpp"
 #include <algorithm>
+#include <iterator>
 #include <vector>
 #include <chrono>
 #include <set>
@@ -39,8 +40,13 @@ int main() {
     }
 
 #ifdef COMPARE
+    namespace fs = std::filesystem;
+
+    auto file_folder = fs::absolute(__FILE__).remove_filename();
+    fs::path pth = fs::canonical(file_folder.string() + "/../");
+
     std::fstream out;
-    out.open("test/tmp.txt", std::ios::app);
+    out.open(pth.string() + "/test/tmp.txt", std::ios::app);
     if (!out.is_open()) {
         std::cerr << "Cannot open tmp file. Programm shutdown\n";
         return 1;
@@ -124,4 +130,4 @@ int main() {
     }
     std::cerr << "answer error\n";
 #endif
-}
+} // func main()

@@ -1,19 +1,20 @@
 #pragma once
 
+#include <filesystem>
 #include <functional>
+#include <iterator>
 #include <iostream>
 #include <fstream>
 #include <cstring>
 #include <vector>
 #include <memory>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 namespace AVL {
 
 static int graphviz_png_count;
-
-const int right_rotate_factor = 2;
-const int left_rotate_factor = -2;
-const int zero_rotate_factor =  0;
 
 namespace detail {
 
@@ -153,6 +154,11 @@ protected:
     }
 }; // <-- class avl_mem_manager
 
+    /**are used in tree::balance_update()*/
+    constexpr int right_rotate_factor = 2;
+    constexpr int left_rotate_factor = -2;
+    constexpr int zero_rotate_factor = 0;
+
 } // <-- namespace detail
 
 
@@ -164,6 +170,8 @@ class avl_tree_t final : private detail::avl_mem_manager<key_t, comp> {
     using detail::avl_mem_manager<key_t, comp>::nil_;
 
     using typename detail::avl_mem_manager<key_t, comp>::iterator;
+    using typename detail::avl_mem_manager<key_t, comp>::node_t;
+
     using detail::avl_mem_manager<key_t, comp>::add_node;
 
 public:
@@ -176,29 +184,33 @@ private:
         iterator curr   = node;
         iterator parent = nil_;
 
+        iterator node_t:: *l = &node_t::left_ ;
+        iterator node_t:: *r = &node_t::right_;
+
         while (curr != nil_) {
             parent = curr->parent_;
             node_update(curr);
 
             int bfact = bfactor(curr);
 
-            if (bfact == right_rotate_factor) {
+            if (bfact == detail::right_rotate_factor) {
                 iterator right = curr->right_;
 
-                if (bfactor(right) < zero_rotate_factor)
-                    rotate_right(right);
+                if (bfactor(right) < detail::zero_rotate_factor) {
+                    rotate(right, l, r);
+                }
 
-                curr = rotate_left(curr);
+                curr = rotate(curr, r, l);
                 if (parent == nil_) root_ = curr;
             }
 
-            else if (bfact == left_rotate_factor) {
+            else if (bfact == detail::left_rotate_factor) {
                 iterator left = curr->left_;
 
-                if (bfactor(left) > zero_rotate_factor)
-                    rotate_left(left);
+                if (bfactor(left) > detail::zero_rotate_factor)
+                    rotate(left, r, l);
 
-                curr = rotate_right(curr);
+                curr = rotate(curr, l, r);
                 if (parent == nil_) root_ = curr;
             }
 
@@ -207,39 +219,21 @@ private:
     }
 
 
-    iterator rotate_right(iterator node) {
-        iterator new_polus = node->left_;
+    /**
+     * node_side is like node->left to right rotation and polus_side is node->left->right
+     * node_side is like node->right to left rotation and polus_side is node->right->left
+     */
+    iterator rotate(iterator node, iterator node_t::* node_side, iterator node_t::* polus_side) {
+        iterator new_polus = node->*node_side;
         iterator parent = node->parent_;
         iterator save = node;
 
-        node->left_ = new_polus->right_;
-        if (node->left_ != nil_) node->left_->parent_ = node;
+        node->*node_side = new_polus->*polus_side;
 
-        new_polus->right_ = node;
-        node->parent_ = new_polus;
-        new_polus->parent_ = parent;
+        if (node->*node_side != nil_) (node->*node_side)->parent_ = node;
 
-        if (parent != nil_) {
-            if (save == parent->right_) parent->right_ = new_polus;
-            else parent->left_ = new_polus;
-        }
+        new_polus->*polus_side = node;
 
-        node_update(node);
-        node_update(new_polus);
-
-        return new_polus;
-    }
-
-
-    iterator rotate_left(iterator node) {
-        iterator new_polus = node->right_;
-        iterator parent = node->parent_;
-        iterator save = node;
-
-        node->right_ = new_polus->left_;
-        if (node->right_ != nil_) node->right_->parent_ = node;
-
-        new_polus->left_ = node;
         node->parent_ = new_polus;
         new_polus->parent_ = parent;
 
@@ -292,7 +286,7 @@ public:
     void insert(key_t key) {
         if (root_ == nil_) {
             root_ = add_node(key);
-            //dump();
+            dump();
             return;
         }
 
@@ -306,7 +300,7 @@ public:
 
                 curr->right_ = add_node(key, curr, nullptr, nullptr);
                 balance_update(curr);
-                //dump();
+                dump();
             }
 
             else if (comp()(key, curr->key_)) {
@@ -317,7 +311,7 @@ public:
 
                 curr->left_ = add_node(key, curr, nullptr, nullptr);
                 balance_update(curr);
-                //dump();
+                dump();
             }
 
             return;
@@ -426,8 +420,13 @@ public:
 //---------------------------------------GRAPHVIZ---------------------------------------//
     void dump() const {
     #ifdef DUMP_MODE
+        namespace fs = std::filesystem;
+
+        auto file_folder = fs::absolute(__FILE__).remove_filename();
+        fs::path pth = fs::canonical(file_folder.string() + "/../");
+
         std::ofstream out;
-        open_grapviz(out);
+        open_grapviz(out, pth);
 
         iterator node = root_;
 
@@ -436,9 +435,7 @@ public:
 
         close_graphviz(out);
 
-        char sys_cmd[200] = "dot ../logs/log_graphviz.dot -Tpng -o ../logs/images/tree_dump";
-        snprintf(sys_cmd + strlen(sys_cmd), 30, "%d.png", graphviz_png_count);
-        system(sys_cmd);
+        exec_dump_process(pth);
 
         std::cout << graphviz_png_count << " dump made\n";
         graphviz_png_count++;
@@ -446,8 +443,8 @@ public:
     }
 
 private:
-    int open_grapviz(std::ofstream &out) const {
-        out.open("../logs/log_graphviz.dot");
+    int open_grapviz(std::ofstream &out, auto &&pth) const {
+        out.open(pth.string() + "/logs/graphviz/graphviz" + std::to_string(graphviz_png_count) + ".dot" );
         if (!out.is_open()) {
             std::cerr << "Cannot open graphviz file. Programm shutdown\n";
             return 1;
@@ -455,6 +452,18 @@ private:
 
         out << "digraph\n{\n";
         return 0;
+    }
+
+
+    void exec_dump_process(auto &&pth) const {
+        pid_t p = fork();
+        if  (!p) {
+            execl((pth.string() + "/logs/dump.sh").c_str(), (pth.string() + "/logs/dump.sh").c_str(),
+                  (pth.string() + "/logs").c_str(),
+                std::to_string(graphviz_png_count).c_str(),
+                NULL);
+            exit(1);
+        }
     }
 
 
